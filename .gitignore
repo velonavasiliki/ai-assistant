@@ -209,6 +209,7 @@ __marimo__/
 >>>>>>> 05143a17e047d4ddb0d39b3ad48674c69b24051d
 
 # Local env/
+other/
 .DS_Store
 experiment.ipynb
 records.txt
