@@ -1,2 +1,2 @@
 # youtube-agent
-AI Agent that makes queries on youtube, obtains the transcripts of the retrieved videos, and summarises them to user. Then answers questions based on the transcripts using RAG.
+AI Agent that queries YouTube, retrieves video transcripts, summarizes them for the user, and answers questions based on these transcripts using Retrieval-Augmented Generation (RAG).
