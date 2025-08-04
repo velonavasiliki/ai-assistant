@@ -77,7 +77,7 @@ def agent_node(state: AgentState):
     """)
     
     response = model.invoke([system_prompt] + state["messages"])
-    
+
     return {"messages": [response]}
 
 # ======= Codnitional Edges ======= #
@@ -120,7 +120,7 @@ app = graph.compile()
 # ======= Execution ======= #
 
 if __name__ == "__main__":
-    print("\nHello! I am your assistant for youtube! What would you like to search for?")
+    print("\nHello! I am your personal assistant! What would you like to search for?")
     print("\nType 'quit' or 'exit' to end the conversation.")
 
     messages = []
@@ -135,7 +135,7 @@ if __name__ == "__main__":
         
         final_message = final_state['messages'][-1]
         messages = final_state['messages']
-
+        print(f"messages:{messages} ")
         print(f"\nAI: {final_message.content}")
 
-    print("\n==== YOUTUBE ASSISTANT FINISHED ====")
+    print("\n==== PERSONAL ASSISTANT FINISHED ====")
