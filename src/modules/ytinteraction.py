@@ -12,14 +12,16 @@ YOUTUBE_API_KEY = os.getenv('YOUTUBE_API_KEY')
 
 
 class ytinteraction:
-
+    """
+    A class for interacting with the YouTube Data API to retrieve video information.
+    """
     def __init__(self) -> None:
         self.info = {}
 
     def ytretriever(self, query: str, order: str = 'viewCount', duration='medium', num_results: int = 1, before: str = None, after: str = None):
         """
         Searches YouTube for videos related to query, inside a timespan.
-        Returns list with title, channel, date, ID.
+        Returns a dictionary containing the videos' ids as keys and title, channel, and date, as values.
 
         Parameters:
         -----------
@@ -38,29 +40,35 @@ class ytinteraction:
 
         Returns:
         --------
-            self.info dict[dict]:
-                Populates self.info with {ID: title, channel, date, transcript, transcript_summary} 
-                of retrieved videos. transcript, transcript_summary are set to None.
+            dict[dict] :
+                Dictionary self.info populated with ID keys and dictionary values. For a video ID key the
+                associated value is {title, channel, date, transcript, transcript_summary}. 
+                The keys 'transcript', 'transcript_summary' are set to None.
         """
         youtube = build('youtube', 'v3', developerKey=YOUTUBE_API_KEY)
         now_time = datetime.now(timezone.utc)
 
-        if before:
-            before_time = datetime.strptime(before, "%m/%d/%Y").replace(
-                hour=23, minute=59, second=59, microsecond=999999, tzinfo=timezone.utc
-            )
-        else:
-            before_time = datetime.now(timezone.utc)
+        try:
+            if before:
+                before_time = datetime.strptime(before, "%m/%d/%Y").replace(
+                    hour=23, minute=59, second=59, microsecond=999999, tzinfo=timezone.utc
+                )
+            else:
+                before_time = datetime.now(timezone.utc)
 
-        if after:
-            after_time = datetime.strptime(after, "%m/%d/%Y").replace(
-                hour=0, minute=0, second=0, microsecond=0, tzinfo=timezone.utc
-            )
-        else:
-            after_time = (now_time - relativedelta(years=5)).replace(
-                hour=0, minute=0, second=0, microsecond=0, tzinfo=timezone.utc
-            )
+            if after:
+                after_time = datetime.strptime(after, "%m/%d/%Y").replace(
+                    hour=0, minute=0, second=0, microsecond=0, tzinfo=timezone.utc
+                )
+            else:
+                after_time = (now_time - relativedelta(years=5)).replace(
+                    hour=0, minute=0, second=0, microsecond=0, tzinfo=timezone.utc
+                )
 
+        except ValueError as e:
+            print(f"Error parsing date strings: {e}")
+            return {}
+        
         try:
             search_response = youtube.search().list(
                 part='id,snippet',
@@ -88,15 +96,15 @@ class ytinteraction:
                         'transcript_summary': None
                     }
 
-            if not self.info:
-                raise ValueError(
-                    "Could not recover videos of the right format.")
-
             return self.info
 
+        except HttpError as e:
+            print(f"A YouTube API error occurred: {e}")
+            return {}
         except Exception as e:
-            print(f"An error occurred: {e}")
-            return None
+            print(f"An unexpected error occurred: {e}")
+            return {}
+
 
     def yttranscript(self, ids: list[str]):
         """
@@ -109,7 +117,7 @@ class ytinteraction:
 
         Returns:
         --------
-            self.info : dict
+            dict :
             Dictionary with video IDs as keys and title, channel, date, transcript, 
             transcript_summary as values.
         """
