@@ -11,10 +11,11 @@ load_dotenv()
 YOUTUBE_API_KEY = os.getenv('YOUTUBE_API_KEY')
 
 
-class ytinteraction:
+class ytinteraction(BaseModel):
     """
     A class for interacting with the YouTube Data API to retrieve video information.
     """
+
     def __init__(self) -> None:
         self.info = {}
 
@@ -40,9 +41,9 @@ class ytinteraction:
 
         Returns:
         --------
-            dict[dict] :
+            dict[str, dict] :
                 Dictionary self.info populated with ID keys and dictionary values. For a video ID key the
-                associated value is {title, channel, date, transcript, transcript_summary}. 
+                associated value is of the form {title: , channel: , date:, transcript: , transcript_summary: }. 
                 The keys 'transcript', 'transcript_summary' are set to None.
         """
         youtube = build('youtube', 'v3', developerKey=YOUTUBE_API_KEY)
@@ -68,7 +69,7 @@ class ytinteraction:
         except ValueError as e:
             print(f"Error parsing date strings: {e}")
             return {}
-        
+
         try:
             search_response = youtube.search().list(
                 part='id,snippet',
@@ -105,7 +106,6 @@ class ytinteraction:
             print(f"An unexpected error occurred: {e}")
             return {}
 
-
     def yttranscript(self, ids: list[str]):
         """
         Searches and assembles transcripts of YouTube videos, updates self.info.
@@ -117,9 +117,10 @@ class ytinteraction:
 
         Returns:
         --------
-            dict :
-            Dictionary with video IDs as keys and title, channel, date, transcript, 
-            transcript_summary as values.
+            dict[dict] :
+                Dictionary self.info populated with ID keys and dictionary values. For a video ID key the
+                associated value is {title, channel, date, transcript, transcript_summary}. 
+                This method updates the 'transcript' value.
         """
         ytt_api = YouTubeTranscriptApi()
 
