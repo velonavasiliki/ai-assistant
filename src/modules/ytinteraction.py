@@ -10,8 +10,7 @@ from youtube_transcript_api import YouTubeTranscriptApi
 load_dotenv()
 YOUTUBE_API_KEY = os.getenv('YOUTUBE_API_KEY')
 
-
-class ytinteraction(BaseModel):
+class ytinteraction:
     """
     A class for interacting with the YouTube Data API to retrieve video information.
     """
@@ -148,3 +147,4 @@ class ytinteraction(BaseModel):
                 continue
 
         return self.info
+
