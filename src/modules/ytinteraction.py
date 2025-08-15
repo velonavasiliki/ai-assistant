@@ -87,7 +87,7 @@ class ytinteraction:
             for item in search_response['items']:
                 # eliminate videos set to premier later
                 if item['snippet']['liveBroadcastContent'] == 'none' and item['id']['kind'] == 'youtube#video':
-                    self.info['id'] = {
+                    self.info[item['id']['videoId']] = {
                         'title': html.unescape(item['snippet']['title']),
                         'channel': item['snippet']['channelTitle'],
                         'date': item['snippet']['publishedAt'],
