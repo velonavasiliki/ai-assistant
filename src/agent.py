@@ -34,6 +34,7 @@ class YouTubeSearchTool(BaseTool):
     """Tool to search YouTube videos and return results as JSON."""
     name: str = "yt_search_tool"
     description: str = "Search YouTube for videos with filtering options like duration, date range, and sort order."
+    yt_instance: ytinteraction = None 
 
     def __init__(self, yt_instance: ytinteraction):
         super().__init__()
@@ -102,6 +103,7 @@ class GetTranscriptTool(BaseTool):
     """Tool to retrieve YouTube video transcripts from given list of video IDs."""
     name: str = "get_transcript_tool"
     description: str = "Retrieve transcripts for YouTube videos by their video IDs."
+    yt_instance: ytinteraction = None 
 
     def __init__(self, yt_instance: ytinteraction):
         super().__init__()
@@ -136,7 +138,7 @@ class VectorizeURLTool(BaseTool):
     Use this tool when the user provides a URL and asks to "process", "vectorize",
     "ingest", or "learn about" a document from a link. Supports PDF and HTML formats.
     """
-    name: str = "vectorize_url_tool "
+    name: str = "vectorize_url_tool"
     description: str = "Download and vectorize a document (PDF or HTML) from a URL."
 
     def _run(self, document_url: str) -> str:
@@ -206,7 +208,7 @@ class VectorizeYTTranscriptsTool(BaseTool):
 
 class AgentState(TypedDict):
     """The state of the agent, containing the conversation history."""
-    messages: Annotated[List[BaseMessage], operator.add]
+    messages: List[BaseMessage]
     ytrecords: ytinteraction
     current_task: str    # options: 'youtube', 'url', 'q'
     quit: bool = False
@@ -224,7 +226,6 @@ def create_youtube_tools(yt_instance: ytinteraction):
 
 
 llm = ChatGoogleGenerativeAI(model="gemini-2.5-pro", temperature=0)
-model = llm
 url_tools = [VectorizeURLTool()]
 url_model = llm.bind_tools(url_tools)
 
@@ -248,11 +249,11 @@ def greeter_intent_node(state: AgentState):
     """Agent that greets and identifies the user's intention"""
 
     if not state['messages']:
-        user_input = input(
-            "Hello! I am your personal assistant! Do you want to learn about an url or search youtube and discuss the results?\n")
-        state['messages'].append(HumanMessage(content=user_input))
+        intro_prompt = "Hello! I am your personal assistant! Do you want to learn about a url or search youtube and discuss the results?"
     else:
-        user_input = state['messages'][-1].content
+        intro_prompt = "Do you want to learn about a url or search youtube and discuss the results?"
+    user_input = input(intro_prompt + "\nUSER: ")
+    state['messages'].extend([AIMessage(content=intro_prompt), HumanMessage(content=user_input)])
 
     # Create structured LLM
     structured_llm = llm.with_structured_output(IntentClassification)
@@ -260,21 +261,25 @@ def greeter_intent_node(state: AgentState):
     system_prompt = """You are a personal AI Assistant.
     Classify the user's intention into one of these categories:
     - youtube_search: User wants to search YouTube videos or discuss video content
-    - url_recovery: User wants to analyze/process a document from a URL
+    - url_recovery: User wants to analyze/process a document from a URL. 
     - unsure: Intent is unclear or doesn't fit the above categories
+    The users does not need to give an actual url or an actual search term for youtube. It is enough to set their intention.
     """
 
     response = structured_llm.invoke(
         [SystemMessage(content=system_prompt), HumanMessage(content=user_input)])
+    
+    print(f"AI thinks: {response}")
 
     # Extract the enum value
-    intent_value = response.intent.value
-    if intent_value == 'youtube_search':
+    intent_value = response.intent
+    if intent_value == Intent.youtube_search:
         state["current_task"] = 'youtube'
         state["messages"].append(
             AIMessage(content=f"Intent classified as: {intent_value}"))
-        state["ytrecords"] = ytinteraction()
-    elif intent_value == 'url':
+        if not state["ytrecords"]:
+            state["ytrecords"] = ytinteraction()
+    elif intent_value == Intent.url_recovery:
         state["current_task"] = 'url'
         state["messages"].append(
             AIMessage(content=f"Intent classified as: {intent_value}"))
@@ -288,7 +293,8 @@ def greeter_intent_node(state: AgentState):
                 state["messages"].append(
                     AIMessage(content=f"Intent classified as: {new_input}"))
                 break
-
+    print(f"AI: Intent classified as {intent_value}.")
+    
     return state
 
 
@@ -533,7 +539,9 @@ graph.add_node("rag_agent_node", rag_agent_node)
 graph.add_node("url_node", url_node)
 youtube_tools = create_youtube_tools(ytinteraction())
 graph.add_node("yttools", ToolNode(youtube_tools))
-graph.add_node("urltools", ToolNode(url_tools))
+graph.add_node("vectorize_url_tool", ToolNode(url_tools)) 
+
+graph.add_edge("vectorize_url_tool", "rag_agent_node")
 
 graph.set_entry_point("greeter_intent_node")
 
@@ -580,7 +588,7 @@ graph.add_conditional_edges(
     "url_node",
     should_loop,
     {
-        "loop": "urltools",
+        "loop": "vectorize_url_tool",
         "continue": "rag_agent_node",
         "quit": END
     }
