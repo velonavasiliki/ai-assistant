@@ -16,16 +16,22 @@ from youtube_transcript_api import YouTubeTranscriptApi
 from modules.ytinteraction import ytinteraction
 from modules.vectorization import vectorization_url, vectorize_yt_transcripts
 from langchain_google_genai import GoogleGenerativeAIEmbeddings
-from langchain_community.vectorstores import Chroma
+from langchain_chroma import Chroma
 import json
 import enum
-from pydantic import BaseModel
+from pydantic import BaseModel 
+import logging
+from langchain_huggingface import HuggingFaceEmbeddings
 
-# ======= Environment variables ======= #
+# ======= Setup ======= #
 
 load_dotenv()
 GOOGLE_API_KEY = os.getenv("GOOGLE_API_KEY")
+if not GOOGLE_API_KEY:
+    raise ValueError('GOOGLE_API_KEY not found in the environment variables.')
 PERSIST_DIRECTORY = "chroma_db_google"
+
+logger = logging.getLogger(__name__)
 
 # ======= Tools ======= #
 
@@ -156,14 +162,14 @@ class VectorizeURLTool(BaseTool):
             Status message indicating success or failure of the vectorization process.
         """
         try:
-            print(f"\n--- Vectorizing document from: {document_url} ---")
+            logger.debug(f"\n--- Vectorizing document from: {document_url} ---")
             result = vectorization_url(document_url)
-            print(f"--- Result: {result} ---")
+            logger.debug(f"--- Result: {result} ---")
             return result
         except Exception as e:
             error_msg = f"Failed to vectorize document from {
                 document_url}: {str(e)}"
-            print(f"--- Error: {error_msg} ---")
+            logger.debug(f"--- Error: {error_msg} ---")
             return error_msg
 
 
@@ -204,7 +210,7 @@ class VectorizeYTTranscriptsTool(BaseTool):
         except Exception as e:
             return f"Error vectorizing transcripts: {str(e)}"
 
-# ======= Model definition and some useful classes ======= #
+# ======= Model setup ======= #
 
 
 class AgentState(TypedDict):
@@ -216,7 +222,7 @@ class AgentState(TypedDict):
     go_back: bool = False
 
 
-def create_youtube_tools(yt_instance: ytinteraction):
+def create_youtube_tools(yt_instance: ytinteraction) -> List[BaseTool]:
     """Create YouTube tools with the ytinteraction instance"""
     return [
         YouTubeSearchTool(yt_instance),
@@ -225,13 +231,26 @@ def create_youtube_tools(yt_instance: ytinteraction):
         VectorizeYTTranscriptsTool()
     ]
 
+try:
+    llm = ChatGoogleGenerativeAI(
+        model="gemini-2.5-flash", 
+        temperature=0,
+        google_api_key=GOOGLE_API_KEY
+    )
+except Exception as e:
+    logger.critical(f'Failed to initialize LLM: {e}')
+    raise RuntimeError('Cannot start application without LLM access') from e
 
-llm = ChatGoogleGenerativeAI(model="gemini-2.5-flash", temperature=0)
 url_tools = [VectorizeURLTool()]
 url_model = llm.bind_tools(url_tools)
-youtube_tools = create_youtube_tools(ytinteraction())
-yt_model = llm.bind_tools(youtube_tools)
 
+try:
+    youtube_tools = create_youtube_tools(ytinteraction())
+except Exception as e:
+    logger.error(f'Failed to create YouTube tools: {e}')
+    raise
+
+yt_model = llm.bind_tools(youtube_tools)
 
 class Intent(enum.Enum):
     """Coerces LLM output"""
@@ -239,14 +258,12 @@ class Intent(enum.Enum):
     url_recovery = 'url'
     unsure = 'unsure'
 
-
 class IntentClassification(BaseModel):
     intent: Intent
     confidence: float = 1.0
     reasoning: str = ""
 
 # ======= Nodes definitions ======= #
-
 
 def greeter_intent_node(state: AgentState):
     """Agent that greets and identifies the user's intention"""
@@ -273,7 +290,7 @@ def greeter_intent_node(state: AgentState):
     response = structured_llm.invoke(
         [SystemMessage(content=system_prompt), HumanMessage(content=user_input)])
 
-    print(f"AI thinks: {response}")
+    logger.debug(f"AI thinks: {response}")
 
     # Extract the enum value
     intent_value = response.intent
@@ -281,8 +298,6 @@ def greeter_intent_node(state: AgentState):
         state["current_task"] = 'youtube'
         state["messages"].append(
             AIMessage(content=f"Intent classified as: {intent_value}"))
-        # if not state["ytrecords"]:
-        # state["ytrecords"] = youtube_tools[0].yt_instance
     elif intent_value == Intent.url_recovery:
         state["current_task"] = 'url'
         state["messages"].append(
@@ -331,7 +346,7 @@ def youtube_node(state: AgentState):
             break
         if i > 5:
             break
-    print(f"\n INFO: {state["ytrecords"].info}\n")
+    logger.debug(f"\n INFO: {state["ytrecords"].info}\n")
     if tool_message_found:
         try:
             results = json.loads(tool_message_found.content)
@@ -384,7 +399,7 @@ def youtube_node(state: AgentState):
         state["messages"].append(response)
 
         if hasattr(response, 'tool_calls') and response.tool_calls:
-            print(f"\nAI TOOL CALL: {response.tool_calls}\n")
+            logger.debug(f"\nAI TOOL CALL: {response.tool_calls}\n")
             return state
 
     return state
@@ -465,21 +480,31 @@ def rag_agent_node(state: AgentState):
 
     # Load the existing persisted ChromaDB vector store
     try:
-        embeddings = GoogleGenerativeAIEmbeddings(
-            model="models/embedding-001",
-            google_api_key=GOOGLE_API_KEY
+        embeddings = HuggingFaceEmbeddings(
+            model_name="sentence-transformers/all-MiniLM-L6-v2"
         )
+    except ValueError as e:
+        logger.error(f'Invalid API key or model: {e}')
+        print('Failed to initialize mbeddings.')
+        state['current_task'] = 'greeter'
+        return state
 
+    try:
         vector_store = Chroma(
             persist_directory=PERSIST_DIRECTORY,
             embedding_function=embeddings
         )
+    except Exception as e:
+        loggr.error(f'Failed to load vector store: {e}', exc_info=True)
+        print('Error accessing document database.')
+        state['current_task'] = 'greeter'
+        return state
 
+    try:
         retriever = vector_store.as_retriever(
-            search_type="similarity",
+            search_type="mmr",
             search_kwargs={"k": 5}
         )
-
     except Exception as e:
         print(f"Error loading vector store: {e}")
         print("No vectorized documents found. Please process some documents first.")
@@ -505,7 +530,7 @@ def rag_agent_node(state: AgentState):
 
         try:
             # Retrieve relevant documents from existing vector store
-            retrieved_docs = retriever.get_relevant_documents(user_question)
+            retrieved_docs = retriever.invoke(user_question)
 
             if not retrieved_docs:
                 print(
@@ -561,8 +586,8 @@ def start_over_or_quit(state: AgentState) -> str:
         return "quit"
     # If current_task was changed by user input inside QA, restart flow
     if state["current_task"] in ["youtube", "url", "greeter"]:
-        return "restart"
-    return "continue"
+        return "restart"    
+    return "continue"  
 
 
 def should_loop(state: AgentState) -> str:

@@ -6,10 +6,11 @@ import chromadb
 from urllib.parse import urlparse
 from langchain.text_splitter import RecursiveCharacterTextSplitter
 from langchain_community.document_loaders import PyPDFLoader, UnstructuredURLLoader
-from langchain_community.vectorstores import Chroma
+from langchain_chroma import Chroma
 from langchain_google_genai import GoogleGenerativeAIEmbeddings
 from langchain.schema.document import Document
 from typing import List
+from langchain_huggingface import HuggingFaceEmbeddings
 
 load_dotenv()
 GOOGLE_API_KEY = os.getenv('GOOGLE_API_KEY')
@@ -37,8 +38,9 @@ def vectorization(documents: List[Document]):
     print(f"Document(s) split into {len(docs)} chunks.")
     print("Initializing the embeddings model...")
 
-    embeddings = GoogleGenerativeAIEmbeddings(
-        model="models/embedding-001", google_api_key=GOOGLE_API_KEY)
+    embeddings = HuggingFaceEmbeddings(
+        model_name="sentence-transformers/all-MiniLM-L6-v2"
+    )
 
     # Create and persist the ChromaDB vector store
     print(
@@ -49,7 +51,6 @@ def vectorization(documents: List[Document]):
             embedding=embeddings,
             persist_directory=PERSIST_DIRECTORY
         )
-        vector_store.persist()
         print("Vectorization complete and saved to disk.")
         return True
     except Exception as e:
@@ -73,8 +74,12 @@ def vectorization_url(document_url: str):
     documents_from_url = []  
     temp_file_path = None  
 
+    headers = {
+    'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36'
+    }
+
     try:
-        response_head = requests.head(document_url, allow_redirects=True)
+        response_head = requests.head(document_url, headers=headers, allow_redirects=True)
         response_head.raise_for_status()
         content_type = response_head.headers.get('Content-Type', '').lower()
         print(f"Content-Type detected: {content_type}")
@@ -86,7 +91,7 @@ def vectorization_url(document_url: str):
         print(f"Detected PDF file from URL: {document_url}")
         print("Downloading PDF from URL...")
         try:
-            response_get = requests.get(document_url, allow_redirects=True)
+            response_get = requests.get(document_url, headers=headers, allow_redirects=True)
             response_get.raise_for_status()
         except requests.exceptions.RequestException as e:
             print(f"Error downloading the PDF: {e}")
@@ -103,7 +108,7 @@ def vectorization_url(document_url: str):
     elif 'text/html' in content_type:
         print(f"Detected web page from URL: {document_url}")
         print("Loading HTML content...")
-        loader = UnstructuredURLLoader(urls=[document_url])
+        loader = UnstructuredURLLoader(urls=[document_url], headers=headers)
 
     else:
         print(
