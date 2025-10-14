@@ -11,6 +11,7 @@ from langchain_google_genai import GoogleGenerativeAIEmbeddings
 from langchain.schema.document import Document
 from typing import List
 from langchain_huggingface import HuggingFaceEmbeddings
+from googleapiclient.errors import HttpError
 
 load_dotenv()
 GOOGLE_API_KEY = os.getenv('GOOGLE_API_KEY')

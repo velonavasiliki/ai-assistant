@@ -130,7 +130,7 @@ class ytinteraction:
                 transcript_snippets = [
                     snippet.text for snippet in fetched_transcript]
                 transcript = 'TRANSCRIPT: ' + ' '.join(transcript_snippets)
-                if 'id' in self.info:
+                if id in self.info:
                     self.info[id]['transcript'] = transcript
                 else:
                     self.info[id] = {

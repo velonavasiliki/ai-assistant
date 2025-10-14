@@ -495,7 +495,7 @@ def rag_agent_node(state: AgentState):
             embedding_function=embeddings
         )
     except Exception as e:
-        loggr.error(f'Failed to load vector store: {e}', exc_info=True)
+        logger.error(f'Failed to load vector store: {e}', exc_info=True)
         print('Error accessing document database.')
         state['current_task'] = 'greeter'
         return state
