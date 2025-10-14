@@ -206,7 +206,6 @@ cython_debug/
 marimo/_static/
 marimo/_lsp/
 __marimo__/
->>>>>>> 05143a17e047d4ddb0d39b3ad48674c69b24051d
 
 # Local env/
 other/
@@ -214,3 +213,7 @@ other/
 experiment.ipynb
 records.txt
 src/agent.ipynb
+
+# Local Testing
+src/chroma_db_google/
+src/helper.ipynb
