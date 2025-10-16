@@ -1,21 +1,13 @@
-import os
-from dotenv import load_dotenv
 import requests
 import tempfile
-import chromadb
-from urllib.parse import urlparse
 from langchain.text_splitter import RecursiveCharacterTextSplitter
 from langchain_community.document_loaders import PyPDFLoader, UnstructuredURLLoader
 from langchain_chroma import Chroma
-from langchain_google_genai import GoogleGenerativeAIEmbeddings
 from langchain.schema.document import Document
 from typing import List
 from langchain_huggingface import HuggingFaceEmbeddings
-from googleapiclient.errors import HttpError
-
-load_dotenv()
-GOOGLE_API_KEY = os.getenv('GOOGLE_API_KEY')
-PERSIST_DIRECTORY = "chroma_db_google"
+from config import Config
+import os
 
 def vectorization(documents: List[Document]):
     """
@@ -29,8 +21,8 @@ def vectorization(documents: List[Document]):
     """
     print("Splitting the document(s) into chunks...")
     text_splitter = RecursiveCharacterTextSplitter(
-        chunk_size=1000,
-        chunk_overlap=200,
+        chunk_size=Config.CHUNK_SIZE,
+        chunk_overlap=Config.CHUNK_OVERLAP,
         length_function=len,
         is_separator_regex=False,
     )
@@ -40,17 +32,17 @@ def vectorization(documents: List[Document]):
     print("Initializing the embeddings model...")
 
     embeddings = HuggingFaceEmbeddings(
-        model_name="sentence-transformers/all-MiniLM-L6-v2"
+        model_name=Config.EMBEDDING_MODEL_NAME
     )
 
     # Create and persist the ChromaDB vector store
     print(
-        f"Creating and persisting the ChromaDB vector store in '{PERSIST_DIRECTORY}'...")
+        f"Creating and persisting the ChromaDB vector store in '{Config.PERSIST_DIRECTORY}'...")
     try:
         vector_store = Chroma.from_documents(
             documents=docs,
             embedding=embeddings,
-            persist_directory=PERSIST_DIRECTORY
+            persist_directory=Config.PERSIST_DIRECTORY
         )
         print("Vectorization complete and saved to disk.")
         return True

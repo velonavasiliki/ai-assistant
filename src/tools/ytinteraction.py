@@ -1,14 +1,11 @@
-import os
-from dotenv import load_dotenv
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timezone
 from dateutil.relativedelta import relativedelta
 import html
 import time
 from googleapiclient.discovery import build
 from youtube_transcript_api import YouTubeTranscriptApi
-
-load_dotenv()
-YOUTUBE_API_KEY = os.getenv('YOUTUBE_API_KEY')
+from config import Config
+from googleapiclient.errors import HttpError
 
 class ytinteraction:
     """
@@ -45,7 +42,7 @@ class ytinteraction:
                 associated value is of the form {title: , channel: , date:, transcript: , transcript_summary: }. 
                 The keys 'transcript', 'transcript_summary' are set to None.
         """
-        youtube = build('youtube', 'v3', developerKey=YOUTUBE_API_KEY)
+        youtube = build('youtube', 'v3', developerKey=Config.YOUTUBE_API_KEY)
         now_time = datetime.now(timezone.utc)
 
         try:
@@ -61,7 +58,7 @@ class ytinteraction:
                     hour=0, minute=0, second=0, microsecond=0, tzinfo=timezone.utc
                 )
             else:
-                after_time = (now_time - relativedelta(years=5)).replace(
+                after_time = (now_time - relativedelta(years=Config.YT_DEFAULT_YEARS_BACK)).replace(
                     hour=0, minute=0, second=0, microsecond=0, tzinfo=timezone.utc
                 )
 

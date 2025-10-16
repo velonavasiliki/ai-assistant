@@ -1,33 +1,17 @@
-import os
-import operator
-from dotenv import load_dotenv
-from typing import TypedDict, Annotated, List, Union
+from typing import TypedDict, List
 from datetime import datetime, timezone
-from dateutil.relativedelta import relativedelta
-import html
 from langchain_core.messages import BaseMessage, HumanMessage, ToolMessage, AIMessage, SystemMessage
 from langchain_google_genai import ChatGoogleGenerativeAI
 from langgraph.graph import StateGraph, END
 from langgraph.prebuilt import ToolNode
-from googleapiclient.discovery import build
-from googleapiclient.errors import HttpError
-from youtube_transcript_api import YouTubeTranscriptApi
 from tools.base_tools import *
-from langchain_google_genai import GoogleGenerativeAIEmbeddings
 from langchain_chroma import Chroma
 import json
 import enum
 from pydantic import BaseModel 
 import logging
 from langchain_huggingface import HuggingFaceEmbeddings
-
-# ======= Setup ======= #
-
-load_dotenv()
-GOOGLE_API_KEY = os.getenv("GOOGLE_API_KEY")
-if not GOOGLE_API_KEY:
-    raise ValueError('GOOGLE_API_KEY not found in the environment variables.')
-PERSIST_DIRECTORY = "chroma_db_google"
+from config import Config
 
 logger = logging.getLogger(__name__)
 
@@ -53,9 +37,9 @@ def create_youtube_tools(yt_instance: ytinteraction) -> List[BaseTool]:
 
 try:
     llm = ChatGoogleGenerativeAI(
-        model="gemini-2.5-flash", 
-        temperature=0,
-        google_api_key=GOOGLE_API_KEY
+        model=Config.LLM_MODEL_NAME, 
+        temperature=Config.LLM_TEMPERATURE,
+        google_api_key=Config.GOOGLE_API_KEY
     )
 except Exception as e:
     logger.critical(f'Failed to initialize LLM: {e}')
@@ -301,7 +285,7 @@ def rag_agent_node(state: AgentState):
     # Load the existing persisted ChromaDB vector store
     try:
         embeddings = HuggingFaceEmbeddings(
-            model_name="sentence-transformers/all-MiniLM-L6-v2"
+            model_name=Config.EMBEDDING_MODEL_NAME
         )
     except ValueError as e:
         logger.error(f'Invalid API key or model: {e}')
@@ -311,7 +295,7 @@ def rag_agent_node(state: AgentState):
 
     try:
         vector_store = Chroma(
-            persist_directory=PERSIST_DIRECTORY,
+            persist_directory=Config.PERSIST_DIRECTORY,
             embedding_function=embeddings
         )
     except Exception as e:
@@ -322,8 +306,8 @@ def rag_agent_node(state: AgentState):
 
     try:
         retriever = vector_store.as_retriever(
-            search_type="mmr",
-            search_kwargs={"k": 5}
+            search_type=Config.RETRIEVER_SEARCH_TYPE,
+            search_kwargs={"k": Config.RETRIEVER_K}
         )
     except Exception as e:
         print(f"Error loading vector store: {e}")
