@@ -31,9 +31,7 @@ PERSIST_DIRECTORY = "chroma_db_google"
 
 logger = logging.getLogger(__name__)
 
-
 # ======= Model setup ======= #
-
 
 class AgentState(TypedDict):
     """The state of the agent, containing the conversation history."""
