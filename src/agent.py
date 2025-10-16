@@ -13,6 +13,7 @@ import logging
 from langchain_huggingface import HuggingFaceEmbeddings
 from config import Config
 
+Config.setup_logging()
 logger = logging.getLogger(__name__)
 
 # ======= Model setup ======= #
