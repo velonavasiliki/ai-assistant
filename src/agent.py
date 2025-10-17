@@ -72,7 +72,6 @@ class IntentClassification(BaseModel):
 
 def greeter_intent_node(state: AgentState):
     """Agent that greets and identifies the user's intention"""
-    print(state["ytrecords"].info)
     if not state['messages']:
         intro_prompt = "Hello! I am your personal assistant! Do you want to learn about a url or search youtube and discuss the results?"
     else:
@@ -151,7 +150,7 @@ def youtube_node(state: AgentState):
             break
         if i > 5:
             break
-    logger.debug(f"\n INFO: {state["ytrecords"].info}\n")
+    logger.debug(f"YouTube records info: {state['ytrecords'].info}")
     if tool_message_found:
         try:
             results = json.loads(tool_message_found.content)
@@ -290,7 +289,7 @@ def rag_agent_node(state: AgentState):
         )
     except ValueError as e:
         logger.error(f'Invalid API key or model: {e}')
-        print('Failed to initialize mbeddings.')
+        print('Failed to initialize embeddings.')
         state['current_task'] = 'greeter'
         return state
 

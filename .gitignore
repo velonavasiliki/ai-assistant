@@ -207,13 +207,20 @@ marimo/_static/
 marimo/_lsp/
 __marimo__/
 
-# Local env/
-other/
+#macOS system files
 .DS_Store
-experiment.ipynb
-records.txt
-src/agent.ipynb
+.AppleDouble
+.LSOverride
 
-# Local Testing
-src/chroma_db_google/
+# ChromaDB vector stores
+chroma_db*/
+src/chroma_db*/
+
+# Local development files
+other/
+records.txt
+experiment.ipynb
+src/agent.ipynb
 src/helper.ipynb
+notebooks/
+.ipynb_checkpoints
