@@ -1,0 +1,18 @@
+# Core LangChain packages
+langchain-core>=0.3.0
+langchain-google-genai>=2.0.0
+langchain-chroma>=0.1.0
+langchain-huggingface>=0.1.0
+langgraph>=0.2.0
+
+# Vector store and embeddings
+chromadb>=0.5.0
+sentence-transformers>=3.0.0
+
+# YouTube integration
+google-api-python-client>=2.100.0
+youtube-transcript-api>=0.6.0
+
+# Utilities
+python-dotenv>=1.0.0
+pydantic>=2.0.0
