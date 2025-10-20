@@ -109,16 +109,4 @@ Key settings in `src/config.py`:
 - `CHUNK_SIZE`: Text chunking for vectorization (default: 1000)
 - `RETRIEVER_K`: Number of documents to retrieve (default: 5)
 
-## Contributing
 
-Contributions are welcome! Please feel free to submit issues or pull requests.
-
-## License
-
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
-
-## Acknowledgments
-
-- Built with [LangChain](https://python.langchain.com/) and [LangGraph](https://langchain-ai.github.io/langgraph/)
-- Powered by [Google Gemini](https://ai.google.dev/)
-- Vector storage with [ChromaDB](https://www.trychroma.com/)
