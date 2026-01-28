@@ -224,3 +224,4 @@ src/agent.ipynb
 src/helper.ipynb
 notebooks/
 .ipynb_checkpoints
+test_transcript.py
