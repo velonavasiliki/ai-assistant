@@ -1,9 +1,7 @@
 """
-Configuration management for the Personal AI Agent.
-
-This module centralizes all configuration settings including API keys,
-model settings, and application parameters.
-"""
+Configuration management.
+This module provides a Config class that centralizes all configuration settings for the AI agent application.
+""" 
 
 import os
 import logging
@@ -19,12 +17,17 @@ class Config:
     # API Keys
     GOOGLE_API_KEY: Optional[str] = os.getenv("GOOGLE_API_KEY")
     YOUTUBE_API_KEY: Optional[str] = os.getenv("YOUTUBE_API_KEY")
+    GROQ_API_KEY: Optional[str] = os.getenv("GROQ_API_KEY")
+
+    # LLM Provider: "groq" or "google"
+    LLM_PROVIDER: str = os.getenv("LLM_PROVIDER", "groq")
 
     # Vector Store Configuration
     PERSIST_DIRECTORY: str = "chroma_db_google"
 
     # Model Configuration
-    LLM_MODEL_NAME: str = "gemini-2.5-flash"
+    LLM_MODEL_NAME_GOOGLE: str = "gemini-2.5-flash-lite"
+    LLM_MODEL_NAME_GROQ: str = "llama-3.3-70b-versatile"
     LLM_TEMPERATURE: float = 0
     EMBEDDING_MODEL_NAME: str = "sentence-transformers/all-MiniLM-L6-v2"
 
@@ -49,10 +52,12 @@ class Config:
     @classmethod
     def validate(cls) -> None:
         """Validate that all required configuration is present."""
-        if not cls.GOOGLE_API_KEY:
+        if cls.LLM_PROVIDER == "google" and not cls.GOOGLE_API_KEY:
             raise ValueError("GOOGLE_API_KEY not found in environment variables")
+        if cls.LLM_PROVIDER == "groq" and not cls.GROQ_API_KEY:
+            raise ValueError("GROQ_API_KEY not found in environment variables")
         if not cls.YOUTUBE_API_KEY:
-            raise ValueError("YOUTUBE_API_KEY not found in environment variables")
+            logging.warning("YOUTUBE_API_KEY not found - YouTube search will fail unless MOCK_MODE=1")")
 
     @classmethod
     def setup_logging(cls) -> None:
@@ -61,6 +66,19 @@ class Config:
             level=getattr(logging, cls.LOG_LEVEL.upper()),
             format=cls.LOG_FORMAT
         )
+        # Silence noisy third-party loggers
+        for logger_name in [
+            "chromadb",
+            "sentence_transformers",
+            "httpx",
+            "google_genai",
+            "googleapiclient",
+            "posthog",
+        ]:
+            logging.getLogger(logger_name).setLevel(logging.ERROR)
+        # Completely silence chromadb telemetry and segment warnings
+        logging.getLogger("chromadb.telemetry.product.posthog").setLevel(logging.CRITICAL)
+        logging.getLogger("chromadb.segment.impl.vector.local_persistent_hnsw").setLevel(logging.ERROR)
 
 
 # Validate configuration on import
