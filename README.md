@@ -1,6 +1,6 @@
 # AI Assistant
 
-A multi-agent system built with LangGraph for retrieving and querying YouTube transcripts and web documents.
+A conversational AI assistant built with LangGraph for retrieving, storing, and querying YouTube transcripts and web documents.
 
 ## What it does
 
@@ -58,7 +58,7 @@ Create `.env` with your API keys:
 GOOGLE_API_KEY=your_key
 YOUTUBE_API_KEY=your_key
 GROQ_API_KEY=your_key        # optional
-LLM_PROVIDER=google          # or groq
+LLM_PROVIDER=groq            # or google
 ```
 
 ## Usage
@@ -90,7 +90,8 @@ src/
 └── tools/
     ├── base_tools.py      # LangChain tools
     ├── ytinteraction.py   # YouTube API
-    └── vectorization.py   # ChromaDB storage
+    ├── vectorization.py   # ChromaDB storage
+    └── mock_data.py       # Mock data for testing
 ```
 
 ## License
