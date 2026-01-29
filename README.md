@@ -67,7 +67,7 @@ LLM_PROVIDER=groq            # or google
 python src/agent.py
 ```
 
-Test without API keys:
+Test without YouTube API key (uses mock data):
 ```bash
 MOCK_MODE=1 python src/agent.py
 ```
