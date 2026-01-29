@@ -35,7 +35,7 @@ class Config:
     CHUNK_SIZE: int = 1000
     CHUNK_OVERLAP: int = 200
 
-    # Retriever Configuration
+    # Retriever Configuration - chose maximal marginal relevance instead of similarity search
     RETRIEVER_SEARCH_TYPE: str = "mmr"
     RETRIEVER_K: int = 5
 
@@ -57,7 +57,7 @@ class Config:
         if cls.LLM_PROVIDER == "groq" and not cls.GROQ_API_KEY:
             raise ValueError("GROQ_API_KEY not found in environment variables")
         if not cls.YOUTUBE_API_KEY:
-            logging.warning("YOUTUBE_API_KEY not found - YouTube search will fail unless MOCK_MODE=1")")
+            logging.warning("YOUTUBE_API_KEY not found - YouTube search will fail unless MOCK_MODE=1")
 
     @classmethod
     def setup_logging(cls) -> None:
