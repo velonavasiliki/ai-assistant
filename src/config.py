@@ -11,6 +11,10 @@ from typing import Optional
 # Load environment variables
 load_dotenv()
 
+# Set default USER_AGENT to suppress warning from web libraries
+if not os.getenv("USER_AGENT"):
+    os.environ["USER_AGENT"] = "ai-assistant/1.0"
+
 class Config:
     """Central configuration for the AI agent application."""
 

@@ -22,6 +22,8 @@ class ytinteraction:
             print("[MOCK MODE] YouTube API calls will return fake data")
 
     def ytretriever(self, query: str, order: str = 'viewCount', duration='medium', num_results: int = 1, before: str = None, after: str = None):
+        # Hard cap on results
+        num_results = min(num_results, 10)
         """
         Searches YouTube for videos related to query, inside a timespan.
         Returns a dictionary containing the videos' ids as keys and title, channel, and date, as values.

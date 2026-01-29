@@ -11,6 +11,95 @@ from config import Config
 logger = logging.getLogger(__name__)
 
 
+def _cleanup_session_content(state: AgentState):
+    """Ask user about keeping/deleting content fetched in this session. Default is delete."""
+    from tools.vectorization import delete_video_by_id, delete_url_documents
+
+    # Handle videos
+    session_videos_list = state.get('session_videos', [])
+    if session_videos_list:
+        print("\nYou fetched these transcripts in this session:")
+        for i, vid in enumerate(session_videos_list, 1):
+            print(f"  {i}. {vid['title']}")
+        print("\nKeep them? (default: delete all)")
+        print("  - 'yes' or 'all' to keep all")
+        print("  - Enter numbers to KEEP specific ones (e.g., '1' or '1,2')")
+        print("  - Press Enter or 'no' to delete all")
+        keep_choice = input("\nYour choice: ").strip().lower()
+
+        if keep_choice in ['yes', 'y', 'all']:
+            print("Keeping all transcripts.")
+        elif keep_choice in ['', 'no', 'n', 'none']:
+            # Default: delete all
+            for vid in session_videos_list:
+                if delete_video_by_id(vid['id']):
+                    print(f"Deleted: {vid['title']}")
+                else:
+                    print(f"Failed to delete: {vid['title']}")
+        else:
+            # Parse numbers to KEEP specific videos, delete the rest
+            parts = keep_choice.replace(',', ' ').split()
+            indices_to_keep = set()
+            for part in parts:
+                if part.isdigit():
+                    idx = int(part) - 1
+                    if 0 <= idx < len(session_videos_list):
+                        indices_to_keep.add(idx)
+
+            for idx, vid in enumerate(session_videos_list):
+                if idx in indices_to_keep:
+                    print(f"Keeping: {vid['title']}")
+                else:
+                    if delete_video_by_id(vid['id']):
+                        print(f"Deleted: {vid['title']}")
+                    else:
+                        print(f"Failed to delete: {vid['title']}")
+
+    # Handle URLs
+    session_urls_list = state.get('all_session_urls', [])
+    if session_urls_list:
+        print("\nYou processed these URLs in this session:")
+        for i, url in enumerate(session_urls_list, 1):
+            print(f"  {i}. {url}")
+        print("\nKeep them? (default: delete all)")
+        print("  - 'yes' or 'all' to keep all")
+        print("  - Enter numbers to KEEP specific ones (e.g., '1' or '1,2')")
+        print("  - Press Enter or 'no' to delete all")
+        keep_choice = input("\nYour choice: ").strip().lower()
+
+        if keep_choice in ['yes', 'y', 'all']:
+            print("Keeping all URLs.")
+        elif keep_choice in ['', 'no', 'n', 'none']:
+            # Default: delete all
+            for url in session_urls_list:
+                if delete_url_documents(url):
+                    print(f"Deleted: {url}")
+                else:
+                    print(f"Failed to delete: {url}")
+        else:
+            # Parse numbers to KEEP specific URLs, delete the rest
+            parts = keep_choice.replace(',', ' ').split()
+            indices_to_keep = set()
+            for part in parts:
+                if part.isdigit():
+                    idx = int(part) - 1
+                    if 0 <= idx < len(session_urls_list):
+                        indices_to_keep.add(idx)
+
+            for idx, url in enumerate(session_urls_list):
+                if idx in indices_to_keep:
+                    print(f"Keeping: {url}")
+                else:
+                    if delete_url_documents(url):
+                        print(f"Deleted: {url}")
+                    else:
+                        print(f"Failed to delete: {url}")
+
+    # Clear session lists after cleanup
+    state['session_videos'] = []
+    state['all_session_urls'] = []
+
+
 def rag_agent_node(state: AgentState):
     """Agent node for Q&A about retrieved and vectorized documents from url and video transcripts."""
     # Lazy import to avoid Python 3.9 compatibility error on startup
@@ -167,84 +256,14 @@ def rag_agent_node(state: AgentState):
     while not state["quit"]:
         user_question = input(prompt_text)
 
-        if user_question.lower() == 'q':
-            # Ask about keeping transcripts fetched in this session
-            session_videos_list = state.get('session_videos', [])
+        if user_question.lower() in ['q', 'back']:
+            # Ask about keeping content fetched in this session
+            _cleanup_session_content(state)
 
-            if session_videos_list:
-                print("\nYou fetched these transcripts in this session:")
-                for i, vid in enumerate(session_videos_list, 1):
-                    print(f"  {i}. {vid['title']}")
-                print("\nOptions:")
-                print("  - 'yes' or 'all' to keep all")
-                print("  - 'no' or 'none' to delete all")
-                print("  - Enter numbers to DELETE specific ones (e.g., '1' or '1,2')")
-                keep_choice = input("\nYour choice: ").strip().lower()
-
-                from tools.vectorization import delete_video_by_id
-                if keep_choice in ['no', 'n', 'none']:
-                    for vid in session_videos_list:
-                        if delete_video_by_id(vid['id']):
-                            print(f"Deleted: {vid['title']}")
-                        else:
-                            print(f"Failed to delete: {vid['title']}")
-                elif keep_choice not in ['yes', 'y', 'all', '']:
-                    # Parse numbers to delete specific videos
-                    parts = keep_choice.replace(',', ' ').split()
-                    indices_to_delete = []
-                    for part in parts:
-                        if part.isdigit():
-                            idx = int(part) - 1
-                            if 0 <= idx < len(session_videos_list):
-                                indices_to_delete.append(idx)
-
-                    for idx in indices_to_delete:
-                        vid = session_videos_list[idx]
-                        if delete_video_by_id(vid['id']):
-                            print(f"Deleted: {vid['title']}")
-                        else:
-                            print(f"Failed to delete: {vid['title']}")
-
-            # Ask about URLs processed in this session
-            session_urls_list = state.get('all_session_urls', [])
-            if session_urls_list:
-                print("\nYou processed these URLs in this session:")
-                for i, url in enumerate(session_urls_list, 1):
-                    print(f"  {i}. {url}")
-                print("\nOptions:")
-                print("  - 'yes' or 'all' to keep all")
-                print("  - 'no' or 'none' to delete all")
-                print("  - Enter numbers to DELETE specific ones (e.g., '1' or '1,2')")
-                keep_urls = input("\nYour choice: ").strip().lower()
-
-                from tools.vectorization import delete_url_documents
-                if keep_urls in ['no', 'n', 'none']:
-                    for url in session_urls_list:
-                        if delete_url_documents(url):
-                            print(f"Deleted: {url}")
-                        else:
-                            print(f"Failed to delete: {url}")
-                elif keep_urls not in ['yes', 'y', 'all', '']:
-                    # Parse numbers to delete specific URLs
-                    parts = keep_urls.replace(',', ' ').split()
-                    indices_to_delete = []
-                    for part in parts:
-                        if part.isdigit():
-                            idx = int(part) - 1
-                            if 0 <= idx < len(session_urls_list):
-                                indices_to_delete.append(idx)
-
-                    for idx in indices_to_delete:
-                        url = session_urls_list[idx]
-                        if delete_url_documents(url):
-                            print(f"Deleted: {url}")
-                        else:
-                            print(f"Failed to delete: {url}")
-
-            state["quit"] = True
-            break
-        elif user_question.lower() == 'back':
-            state["current_task"] = Intent.greeter.value
+            if user_question.lower() == 'q':
+                state["quit"] = True
+            else:
+                state["current_task"] = Intent.greeter.value
             break
 
         try:

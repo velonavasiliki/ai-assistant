@@ -55,6 +55,8 @@ class YouTubeSearchTool(BaseTool):
         str
             JSON string containing video information, or error message if no results found.
         """
+        # Cap num_results to prevent excessive API calls
+        num_results = min(num_results, 10)
         results = self.yt_instance.ytretriever(query=query, order=order, duration=duration,
                                                num_results=num_results, before=before, after=after)
         if not results:

@@ -32,10 +32,11 @@ def youtube_node(state: AgentState):
         after : Date lower limit in format %m/%d/%Y (optional)
 
         CRITICAL RULE - num_results parameter:
-        - DO NOT include num_results in your tool call unless user explicitly asks for multiple videos
-        - When user says "the latest", "a video", "find a video" → DO NOT pass num_results (defaults to 1)
-        - Only when user says "find 5 videos", "show me multiple" → then pass num_results=5
-        - NEVER pass num_results unless explicitly requested by user
+        - Parse numbers from user request, whether digits ("5") or words ("five", "three")
+        - "find five videos" or "find 5 videos" → num_results=5
+        - "the latest", "a video", "find a video" → num_results=1
+        - If no number specified, default to 1
+        - Maximum is 10 videos
 
         - Use `validate_date_tool` to validate date is of the form %m/%d/%Y, if needed by the user's request.
         - If `validate_date_tool` returns False, only then tell user to provide it in the required format.
@@ -43,13 +44,15 @@ def youtube_node(state: AgentState):
         - Be helpful and polite. Do not repeat what the user says.
     """)
 
+    # Only look for recent search results if we have YouTube records (not a fresh start)
     tool_message_found = None
-    for i, message in enumerate(reversed(state["messages"])):
-        if isinstance(message, ToolMessage) and message.name == 'yt_search_tool':
-            tool_message_found = message
-            break
-        if i > 5:
-            break
+    if state['ytrecords'].info:
+        for i, message in enumerate(reversed(state["messages"])):
+            if isinstance(message, ToolMessage) and message.name == 'yt_search_tool':
+                tool_message_found = message
+                break
+            if i > 5:
+                break
     logger.debug(f"YouTube records info: {state['ytrecords'].info}")
     if tool_message_found:
         try:
@@ -76,6 +79,8 @@ def youtube_node(state: AgentState):
             "\nWould you like to get transcripts for these videos? (yes/no/search again): ")
 
         if user_choice.lower() in ['no', 'n']:
+            # Clear YouTube records so next visit starts fresh
+            state["ytrecords"].info = {}
             state["go_back"] = True
             state["current_task"] = Intent.greeter.value
             return state

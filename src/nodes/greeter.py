@@ -19,6 +19,12 @@ def greeter_intent_node(state: AgentState):
     else:
         intro_prompt = "Do you want to recover web content from url, recover youtube transcripts, manage your document library, or chat about stored documents?"
     user_input = input(intro_prompt + "\nUSER: ")
+
+    # Check for quit before LLM classification
+    if user_input.lower() == 'q':
+        state["quit"] = True
+        return state
+
     state['messages'].extend(
         [AIMessage(content=intro_prompt), HumanMessage(content=user_input)])
 
